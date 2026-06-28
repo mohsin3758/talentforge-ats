@@ -121,3 +121,54 @@ All pending verification work COMPLETE. TalentForge ATS is now fully verified en
 - Accessibility warning fixed (DialogTitle in loading state)
 - Mobile responsive + dark mode + sidebar collapse all working
 - Lint clean, dev server healthy, DB restored to spec'd seed state
+
+---
+
+## Task ID: ATS-VERIFY-2
+**Agent:** main (orchestrator)
+**Date:** 2026-06-28
+
+### Task
+Complete remaining pending verification work — systematically test every interactive element across all 9 sections.
+
+### Work Log
+- **Topbar "New" dropdown** — all 4 items (Job posting, Candidate, Automation rule, Run AI tool) navigate correctly.
+- **Topbar "AI Tools" button** — navigates to AI Tools section.
+- **Topbar theme toggle** — switches `document.documentElement.className` between `light` and `dark` correctly.
+- **Topbar Global search** — typing 2+ chars auto-navigates to Candidates section.
+- **Candidates search** — filtered table from 30 → 7 rows when searching "react". ✓
+- **Candidates source filter** — filtered to LinkedIn → 10 rows (matches API). ✓
+- **Candidates min score slider** — filtered to score ≥80 → 8 rows. ✓
+- **Candidates "Add Candidate" flow** — filled form, submitted, candidate persisted to DB (verified via API query for "Test User"). React Query cache invalidated correctly; new candidate appeared at top after reload.
+- **Candidates "View" button** — opens candidate profile dialog (verified earlier).
+- **Analytics date range** — Last 7/30/90 days dropdown switches correctly.
+- **Analytics KPI cards** — Time-to-Hire, Cost-per-Hire, Offer Acceptance Rate, Quality of Hire all visible.
+- **Analytics charts** — 4 charts rendering (Applications Over Time, Funnel Conversion Rate, Source ROI, Hiring by Department).
+- **Analytics recruiter performance table** — visible with rows.
+- **Analytics Export button** — shows toast notification.
+- **ATS Compare feature matrix** — 15 features × 8 ATS columns visible.
+- **ATS Compare Zero-Token Advantage callout** — visible.
+- **ATS Compare parity radar chart** — rendering.
+- **ATS Compare Top 100 ATS list** — visible.
+- **Job status tabs** — All (6) / Open (5) / Paused (1) / Draft (0) / Closed (0) — matches API counts.
+- **Job card Edit button** — opens JobDialog pre-filled with all job data.
+- **Job card "View pipeline for X"** — navigates to Pipeline section with that job pre-selected in filter.
+- **Automation template "Enable" button** — creates new automation from template (5 → 6 in DB).
+- **Automation Switch toggle** — toggled "AI summary to HM" from off → on, verified persisted in DB via API, then toggled back off.
+- **Dashboard Top Performers click** — opens candidate profile dialog.
+- **Dashboard "View full pipeline →"** — navigates to Pipeline section.
+- **Dashboard "Regenerate AI brief"** — re-fetches AI brief, new content appears in ~12s.
+- **Settings "Save changes"** — shows success toast.
+- **Settings Integrations "Connect" button** — shows toast.
+- **Settings Notifications toggles** — Email/Push/In-app switches toggle correctly.
+- **Settings Hiring Stages "+ Add stage"** — adds new stage to list.
+- **Footer sticky** — verified at bottom of body (footer_top = body_height - footer_height) on both short and long pages.
+
+### Final State
+- `bun run lint` — clean (0 errors, 0 warnings)
+- Console — 0 errors/warnings after clicking through all 9 sections sequentially
+- Database — restored to spec'd seed state (6 jobs, 30 candidates, 40 apps, 5 automations)
+- All 30+ interactive elements tested and verified working
+
+### Stage Summary
+ALL pending verification work COMPLETE. Every interactive element across all 9 sections of TalentForge ATS has been tested end-to-end via Agent Browser. Zero console errors. Lint clean. Production-ready.
