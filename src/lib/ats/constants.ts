@@ -330,8 +330,7 @@ export const TOP_100_ATS: string[] = [
   "Crossknowledge", "Litmos", "Taleo Enterprise Edition", "Jobvite CRM", "iCIMS ATS",
   "Greenhouse CRM", "Lever Nurture", "SmartRecruiters CRM", "Ashby HRIS",
   "Personio Payroll", "BambooHR Payroll", "UKG Ready", "ADP Vantage HCM",
-  "Zoho People", "Workday HCM", "SAP SuccessFactors HXM", "Oracle Cloud HCM",
-  "Dayforce", "Ceridian Dayforce", "Indeed Hire", "LinkedIn Recruiter",
+  "Zoho People", "Workday HCM", "SAP SuccessFactors HXM",
 ];
 
 /* Random-ish parity score per ATS for the parity bubble chart (stable across renders) */

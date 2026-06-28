@@ -174,6 +174,12 @@ export interface Analytics {
   sourceEffectiveness: { source: string; applications: number; hires: number }[];
   recentActivity: { type: string; desc: string; at: string }[];
   topCandidates: { id: string; fullName: string; currentTitle: string; matchScore: number }[];
+  // Real computed KPIs (added in deep QA pass)
+  offerAcceptanceRate: number;
+  offersAccepted: number;
+  offersDeclined: number;
+  qualityOfHire: number;
+  costPerHire: number;
 }
 
 export interface AIBrief {

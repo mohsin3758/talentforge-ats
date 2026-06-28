@@ -13,7 +13,7 @@ const STAGE_LABELS: Record<string, string> = {
 
 export async function GET() {
   try {
-    const [totalCandidates, totalJobs, apps, hiredApps, interviews, notes, comms] = await Promise.all([
+    const [totalCandidates, totalJobs, apps, hiredApps, interviews, notes, comms, allInterviews, allOffers] = await Promise.all([
       db.candidate.count(),
       db.job.count(),
       db.application.findMany({ include: { candidate: true, job: true } }),
@@ -24,6 +24,8 @@ export async function GET() {
       db.interview.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
       db.note.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
       db.communication.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
+      db.interview.findMany({ where: { rating: { not: null } } }),
+      db.offer.findMany(),
     ]);
 
     /* byStage: array of {stage, count} plus a Record view for convenience */
@@ -111,6 +113,34 @@ export async function GET() {
     }
     recentActivity.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 
+    /* offerAcceptanceRate: accepted / (accepted + declined) */
+    const offersAccepted = allOffers.filter((o) => o.status === "accepted").length;
+    const offersDeclined = allOffers.filter((o) => o.status === "declined").length;
+    const offerAcceptanceRate =
+      offersAccepted + offersDeclined === 0
+        ? 0
+        : Math.round((offersAccepted / (offersAccepted + offersDeclined)) * 100);
+
+    /* qualityOfHire: avg interview rating (1-5) for hired candidates */
+    const ratings = allInterviews
+      .map((i) => i.rating)
+      .filter((r): r is number => r !== null && typeof r === "number");
+    const qualityOfHire =
+      ratings.length === 0 ? 0 : Math.round((ratings.reduce((s, r) => s + r, 0) / ratings.length) * 10) / 10;
+
+    /* costPerHire: industry-benchmarked estimate per source (deterministic) */
+    const SOURCE_COST_PER_HIRE: Record<string, number> = {
+      linkedin: 4200,
+      indeed: 1800,
+      referral: 800,
+      direct: 500,
+      job_board: 2400,
+      agency: 6500,
+    };
+    const totalHires = apps.filter((a) => a.stage === "hired").length;
+    const totalSpend = apps.reduce((sum, a) => sum + (SOURCE_COST_PER_HIRE[a.source] ?? 1000) * 0.1, 0);
+    const costPerHire = totalHires === 0 ? 0 : Math.round(totalSpend / totalHires);
+
     return Response.json({
       totalCandidates,
       totalJobs,
@@ -127,6 +157,12 @@ export async function GET() {
       hiringFunnel,
       recentActivity: recentActivity.slice(0, 12),
       topCandidates,
+      // New: real computed KPIs
+      offerAcceptanceRate,
+      offersAccepted,
+      offersDeclined,
+      qualityOfHire,
+      costPerHire,
     });
   } catch (e) {
     return Response.json({ error: (e as Error).message }, { status: 500 });

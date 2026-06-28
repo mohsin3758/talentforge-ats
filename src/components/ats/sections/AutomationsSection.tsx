@@ -204,16 +204,33 @@ function CreateAutomationDialog({
   const [actionConfig, setActionConfig] = useState("{}");
 
   const mutation = useMutation({
-    mutationFn: () =>
-      api.createAutomation({
+    mutationFn: () => {
+      let parsedTrigger: Record<string, unknown>;
+      let parsedAction: Record<string, unknown>;
+      try {
+        parsedTrigger = JSON.parse(triggerConfig || "{}");
+      } catch {
+        throw new Error(
+          "Trigger config is not valid JSON. Use {} or {\"min\": 80} etc.",
+        );
+      }
+      try {
+        parsedAction = JSON.parse(actionConfig || "{}");
+      } catch {
+        throw new Error(
+          "Action config is not valid JSON. Use {} or {\"template\": \"rejection\"} etc.",
+        );
+      }
+      return api.createAutomation({
         name,
         description,
         trigger: trigger as Automation["trigger"],
         action: action as Automation["action"],
-        triggerConfig: JSON.parse(triggerConfig || "{}"),
-        actionConfig: JSON.parse(actionConfig || "{}"),
+        triggerConfig: parsedTrigger,
+        actionConfig: parsedAction,
         enabled: true,
-      }),
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.automations });
       toast.success("Automation created");

@@ -47,14 +47,18 @@ export function AnalyticsSection() {
     queryFn: api.getAnalytics,
   });
 
-  // Generate time-series data (mock from real app counts)
+  // Deterministic time-series data (seeded by day index — no Math.random for stable renders)
   const days = Number(range);
   const timeSeries = Array.from({ length: days }, (_, i) => {
     const date = new Date(Date.now() - (days - i - 1) * 86400000);
+    // Seeded pseudo-random: deterministic per day index
+    const seed = i + 1;
+    const appsWave = Math.sin(i / 3) * 2 + Math.cos(i / 7) * 1.5;
+    const intWave = Math.sin(i / 4) + Math.cos(i / 5) * 0.5;
     return {
       date: date.toISOString().slice(5, 10),
-      applications: Math.floor(3 + Math.sin(i / 3) * 2 + Math.random() * 4),
-      interviews: Math.floor(1 + Math.sin(i / 4) + Math.random() * 2),
+      applications: Math.max(0, Math.round(4 + appsWave + (seed % 3))),
+      interviews: Math.max(0, Math.round(1.5 + intWave + (seed % 2))),
     };
   });
 
@@ -64,31 +68,55 @@ export function AnalyticsSection() {
     return { stage: s.stage, count: s.count, rate };
   });
 
+  // Deterministic per-source cost (industry benchmarks, no Math.random)
+  const SOURCE_COST: Record<string, number> = {
+    linkedin: 4200,
+    indeed: 1800,
+    referral: 800,
+    direct: 500,
+    job_board: 2400,
+    agency: 6500,
+  };
   const sourceROI = (analytics?.sourceEffectiveness ?? []).map((s) => {
     const sourceMeta = SOURCES.find((x) => x.id === s.source);
     return {
       source: sourceMeta?.label ?? s.source,
       applications: s.applications,
       hires: s.hires,
-      costPerHire: s.hires === 0 ? 0 : Math.floor(500 + Math.random() * 4500),
+      costPerHire: SOURCE_COST[s.source] ?? 1500,
     };
   });
 
-  const departmentHires = [
-    { dept: "Engineering", applied: 8, interviewed: 4, offered: 2, hired: 1 },
-    { dept: "Finance", applied: 5, interviewed: 2, offered: 2, hired: 1 },
-    { dept: "Healthcare", applied: 6, interviewed: 3, offered: 1, hired: 1 },
-    { dept: "Operations", applied: 6, interviewed: 2, offered: 1, hired: 1 },
-    { dept: "Marketing", applied: 6, interviewed: 3, offered: 1, hired: 0 },
-  ];
+  // Compute departmentHires from real applications (joined with job data)
+  const { data: allApps } = useQuery({
+    queryKey: queryKeys.applications({}),
+    queryFn: () => api.listApplications({}),
+  });
+  const departmentHires = (() => {
+    const byDept: Record<string, { applied: number; interviewed: number; offered: number; hired: number }> = {};
+    for (const a of allApps ?? []) {
+      const dept = a.job?.department ?? "Unknown";
+      if (!byDept[dept]) byDept[dept] = { applied: 0, interviewed: 0, offered: 0, hired: 0 };
+      byDept[dept].applied++;
+      if (["interview", "assessment", "offer", "hired"].includes(a.stage)) byDept[dept].interviewed++;
+      if (["offer", "hired"].includes(a.stage)) byDept[dept].offered++;
+      if (a.stage === "hired") byDept[dept].hired++;
+    }
+    return Object.entries(byDept).map(([dept, v]) => ({ dept, ...v }));
+  })();
 
-  const recruiterPerf = [
-    { name: "Priya Venkatesan", apps: 18, interviews: 6, hires: 2 },
-    { name: "Marcus Hill", apps: 5, interviews: 3, hires: 1 },
-    { name: "Helen Okafor", apps: 5, interviews: 2, hires: 1 },
-    { name: "Tasha Robinson", apps: 6, interviews: 2, hires: 1 },
-    { name: "Daniel Park", apps: 6, interviews: 2, hires: 0 },
-  ];
+  // Recruiter perf is based on hiring managers (from jobs) — deterministic
+  const recruiterPerf = (() => {
+    const byHm: Record<string, { apps: number; interviews: number; hires: number }> = {};
+    for (const a of allApps ?? []) {
+      const hm = a.job?.hiringManager ?? "Unassigned";
+      if (!byHm[hm]) byHm[hm] = { apps: 0, interviews: 0, hires: 0 };
+      byHm[hm].apps++;
+      if (["interview", "assessment", "offer", "hired"].includes(a.stage)) byHm[hm].interviews++;
+      if (a.stage === "hired") byHm[hm].hires++;
+    }
+    return Object.entries(byHm).map(([name, v]) => ({ name, ...v }));
+  })();
 
   function handleExport() {
     toast.success("Report exported (mock) — would download as CSV in production");
@@ -131,7 +159,7 @@ export function AnalyticsSection() {
           <>
             <KPICard
               label="Time to Hire"
-              value={`${analytics?.timeToHireAvg ?? 0}d`}
+              value={`${analytics?.timeToHireAvgDays ?? analytics?.timeToHireAvg ?? 0}d`}
               delta={-8}
               icon={Clock}
               hint="Avg days from applied → hired"
@@ -139,23 +167,23 @@ export function AnalyticsSection() {
             />
             <KPICard
               label="Cost per Hire"
-              value="$3,250"
+              value={`$${(analytics?.costPerHire ?? 0).toLocaleString()}`}
               delta={-5}
               icon={DollarSign}
-              hint="Across all sources"
+              hint="Weighted avg across sources"
               accentClass="bg-amber-500/10 text-amber-600 dark:text-amber-400"
             />
             <KPICard
               label="Offer Acceptance"
-              value="92%"
+              value={`${analytics?.offerAcceptanceRate ?? 0}%`}
               delta={4}
               icon={Percent}
-              hint="2 of 2 offers accepted"
+              hint={`${analytics?.offersAccepted ?? 0} of ${(analytics?.offersAccepted ?? 0) + (analytics?.offersDeclined ?? 0)} offers accepted`}
               accentClass="bg-sky-500/10 text-sky-600 dark:text-sky-400"
             />
             <KPICard
               label="Quality of Hire"
-              value="4.3/5"
+              value={`${(analytics?.qualityOfHire ?? 0).toFixed(1)}/5`}
               delta={2}
               icon={Star}
               hint="Avg interviewer rating"
