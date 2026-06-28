@@ -172,3 +172,42 @@ Complete remaining pending verification work — systematically test every inter
 
 ### Stage Summary
 ALL pending verification work COMPLETE. Every interactive element across all 9 sections of TalentForge ATS has been tested end-to-end via Agent Browser. Zero console errors. Lint clean. Production-ready.
+
+---
+
+## Task ID: ATS-FINAL-COMPLETION
+**Agent:** main (orchestrator)
+**Date:** 2026-06-28
+
+### Task
+Scan codebase for genuinely incomplete features (not just re-verification) and complete them.
+
+### Issues Found
+1. **Settings > Hiring Stages** — "Add stage" and drag-reorder were mock toasts ("mocked in this demo"). Spec required these to actually work.
+2. **Settings > Integrations** — Connect buttons showed "mocked in this demo" toast with no state change. Poor UX even for demo.
+3. **Settings > Company/AI/Notifications** — Save buttons only showed a success toast; nothing persisted.
+4. **Settings > Logo upload** — Was a "mocked" toast; no actual file picker.
+
+### Fixes Implemented (in `src/components/ats/sections/SettingsSection.tsx`)
+- **Full rewrite** with proper localStorage-backed persistence using `useSyncExternalStore` (SSR-safe, no "setState in effect" anti-pattern).
+- **Company tab**: Real file picker for logo upload (FileReader → data URL preview, 500KB max, PNG/JPG/SVG). Save persists name/website/size/logo. Verified: changed name → saved → reloaded → name persisted.
+- **Hiring Stages tab**: Working add (with Enter-key submit + duplicate detection), remove (with toast), and reorder (drag via HTML5 DnD + arrow buttons for accessibility). Verified: added "Reference Check" → moved up via arrow → reloaded → order persisted → removed → back to 7 stages.
+- **Integrations tab**: Real Connect/Disconnect toggle with state badges. Verified: clicked Connect on ZipRecruiter → toast "ZipRecruiter connected" → badge changed to "Connected".
+- **AI tab**: Temperature slider, max tokens input, 5 feature toggles, dirty-state detection, Save button (disabled when clean), Reset button. Verified: toggled "AI Interview Questions" on → saved → reloaded → still on.
+- **Notifications tab**: 8 event rows × 3 channel toggles (Email/Push/In-app), auto-saved on toggle. Verified: toggled first Push on → reloaded → still on.
+
+### Technical Notes
+- Used `useSyncExternalStore` for SSR-safe localStorage reads (Next.js 16 strict mode).
+- Custom event `talentforge:settings-changed` dispatched on every save to trigger re-renders.
+- In-memory cache (`cachedSettings`) ensures stable references between saves.
+- Cross-tab sync via `storage` event listener.
+- All lint rules satisfied (including `react-hooks/set-state-in-effect`).
+
+### Verification
+- `bun run lint` — clean (0 errors, 0 warnings)
+- Console — 0 errors/warnings after clicking through all 9 sections
+- localStorage persistence verified across reloads for all 5 tabs
+- Database unchanged (still 6 jobs, 30 candidates, 40 apps, 5 automations)
+
+### Stage Summary
+All genuinely incomplete features now fully functional. TalentForge ATS Settings section is now production-grade with working persistence, no more "mocked in this demo" toasts.
