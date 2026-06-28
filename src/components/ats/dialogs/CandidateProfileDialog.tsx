@@ -94,9 +94,16 @@ export function CandidateProfileDialog() {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && setSelectedAppId(null)}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto scrollbar-thin">
+      <DialogContent
+        className="max-h-[90vh] max-w-3xl overflow-y-auto scrollbar-thin"
+        aria-describedby={undefined}
+      >
         {isLoading || !app ? (
           <div className="space-y-3 p-4">
+            <DialogTitle className="sr-only">Loading candidate profile</DialogTitle>
+            <DialogDescription className="sr-only">
+              Loading candidate details, please wait.
+            </DialogDescription>
             <div className="h-16 w-16 animate-pulse rounded-full bg-muted" />
             <div className="h-6 w-1/3 animate-pulse rounded bg-muted" />
             <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />

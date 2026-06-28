@@ -81,3 +81,43 @@ Verify the TalentForge ATS UI end-to-end, fix runtime issues, and confirm browse
 
 ### Stage Summary
 TalentForge ATS is fully functional and browser-verified. All 9 sections render real seeded data. Zero-token AI (z-ai-web-dev-sdk) works end-to-end for JD generation and resume scoring. Feature-parity matrix vs top 100 ATS is live in the ATS Compare section. Ready for user preview.
+
+---
+
+## Task ID: ATS-VERIFY-FINAL
+**Agent:** main (orchestrator)
+**Date:** 2026-06-28
+
+### Task
+Complete pending verification work — fix accessibility warnings, test all untested interactions end-to-end, restore clean state.
+
+### Work Log
+- **Fixed accessibility warning** in `CandidateProfileDialog.tsx`: loading state was missing `DialogTitle` and `DialogDescription`. Added `sr-only` title + description for loading state, and `aria-describedby={undefined}` on DialogContent.
+- **Verified all 5 AI tools work end-to-end** via Agent Browser (each returned real AI-generated content):
+  - AI Daily Brief: loaded with priorities + candidates needing attention + automation summary (~9s)
+  - Resume Parser & Scorer: scored 85/100 with reasons + AI summary (~2.5s)
+  - JD Generator: 1,500+ word structured JD with Overview/Responsibilities/Requirements/Benefits (~8s)
+  - Interview Question Generator: 8 tailored questions + focus areas (~12s)
+  - Email Drafter: subject + professional body (~12s)
+  - Offer Letter Generator: full offer letter with $120k salary, start date, terms (~15s)
+  - AI Parse Resume: extracted name (Maria Rodriguez), 8 yrs exp, title (Senior DevOps Engineer) correctly; email/phone correctly left empty when not in resume
+- **Verified Pipeline stage-move API** via direct curl: POST /api/ats/applications/[id]/stage correctly updates stage, appends to stageHistory, persists. Drag-drop UI uses same endpoint.
+- **Verified CandidateProfileDialog** opens with 5 tabs (AI Summary, Stage History, Interviews, Communications, Notes) and 3 inline AI actions (Generate interview Qs, Draft email, Generate offer) — all working.
+- **Verified JobDialog creates real jobs**: created "Junior Data Analyst" → 7 job cards appeared in Jobs section → verified via API.
+- **Verified AutomationsSection creates real automation rules**: created "Welcome new applicants" rule → 8 cards visible (6 active + 2 templates).
+- **Verified Settings section** all 5 tabs switch correctly (Company, Hiring Stages, Integrations, AI, Notifications) — AI tab shows model/temperature/feature toggles.
+- **Verified sidebar collapse** button works (icons-only mode + main content remains visible).
+- **Verified mobile (375px) responsiveness** — stacked layout, no horizontal scroll, content readable, hamburger accessible.
+- **Verified "Generate JD with AI" button on JobCard** opens pre-filled JD generator dialog and produces full JD.
+- **Cleaned up test data**: deleted test job, re-seeded DB to original state (6 jobs, 30 candidates, 40 apps, 5 automations).
+- **Final lint**: `bun run lint` passes clean (no errors, no warnings).
+- **Final console check**: clicked through all 9 sidebar sections in sequence — zero console errors or warnings (only React DevTools info + HMR connected log).
+
+### Stage Summary
+All pending verification work COMPLETE. TalentForge ATS is now fully verified end-to-end:
+- 0 console errors/warnings across all 9 sections
+- All 7 zero-token AI features tested and working (each returns real AI-generated content)
+- All CRUD operations tested (create job, create automation, move stage, star candidate)
+- Accessibility warning fixed (DialogTitle in loading state)
+- Mobile responsive + dark mode + sidebar collapse all working
+- Lint clean, dev server healthy, DB restored to spec'd seed state
