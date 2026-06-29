@@ -12,19 +12,23 @@
  * Exit code 0 = all checks passed
  * Exit code 1 = one or more checks failed (prints details)
  */
-import { chromium } from "@playwright/test";
+import { chromium, type Page, type Browser } from "@playwright/test";
 
 const BASE = "http://localhost:3000";
 
 type Check = {
   name: string;
   category: string;
-  run: () => Promise<{ ok: boolean; detail?: string }>;
+  run: (ctx: { browser: Browser; page: Page }) => Promise<{ ok: boolean; detail?: string }>;
 };
 
 const checks: Check[] = [];
 
-function check(name: string, category: string, fn: () => Promise<{ ok: boolean; detail?: string }>) {
+function check(
+  name: string,
+  category: string,
+  fn: (ctx: { browser: Browser; page: Page }) => Promise<{ ok: boolean; detail?: string }>,
+) {
   checks.push({ name, category, run: fn });
 }
 
@@ -37,23 +41,25 @@ async function fetchJson<T = unknown>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+/** Navigate to a sidebar section, waiting for content to load. */
+async function goToSection(page: Page, section: string) {
+  await page.getByRole("button", { name: section, exact: true }).click();
+  await page.waitForTimeout(800);
+}
+
 /* ------------------------------------------------------------------ */
 /* Dashboard KPIs vs Analytics API                                     */
 /* ------------------------------------------------------------------ */
 check(
   "Dashboard Active Jobs KPI matches API totalJobs",
   "Dashboard",
-  async () => {
+  async ({ page }) => {
     const analytics = await fetchJson<{ totalJobs: number }>("/api/ats/analytics");
-    const browser = await chromium.launch();
-    const page = await browser.newPage();
     await page.goto(BASE);
     await page.waitForLoadState("networkidle");
-    // Click Dashboard
-    await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+    await goToSection(page, "Dashboard");
     const card = page.locator("text=Active Jobs").locator("..");
     const text = await card.innerText();
-    await browser.close();
     const ok = text.includes(String(analytics.totalJobs));
     return { ok, detail: ok ? undefined : `UI="${text}" API=${analytics.totalJobs}` };
   },
@@ -62,16 +68,10 @@ check(
 check(
   "Dashboard Open Applications KPI matches API totalApps",
   "Dashboard",
-  async () => {
+  async ({ page }) => {
     const analytics = await fetchJson<{ totalApps: number }>("/api/ats/analytics");
-    const browser = await chromium.launch();
-    const page = await browser.newPage();
-    await page.goto(BASE);
-    await page.waitForLoadState("networkidle");
-    await page.getByRole("button", { name: "Dashboard", exact: true }).click();
     const card = page.locator("text=Open Applications").locator("..");
     const text = await card.innerText();
-    await browser.close();
     const ok = text.includes(String(analytics.totalApps));
     return { ok, detail: ok ? undefined : `UI="${text}" API=${analytics.totalApps}` };
   },
@@ -80,16 +80,10 @@ check(
 check(
   "Dashboard Hires This Month KPI matches API hiresThisMonth",
   "Dashboard",
-  async () => {
+  async ({ page }) => {
     const analytics = await fetchJson<{ hiresThisMonth: number }>("/api/ats/analytics");
-    const browser = await chromium.launch();
-    const page = await browser.newPage();
-    await page.goto(BASE);
-    await page.waitForLoadState("networkidle");
-    await page.getByRole("button", { name: "Dashboard", exact: true }).click();
     const card = page.locator("text=Hires This Month").locator("..");
     const text = await card.innerText();
-    await browser.close();
     const ok = text.includes(String(analytics.hiresThisMonth));
     return { ok, detail: ok ? undefined : `UI="${text}" API=${analytics.hiresThisMonth}` };
   },
@@ -101,17 +95,12 @@ check(
 check(
   "Analytics Cost per Hire matches API (not hardcoded)",
   "Analytics",
-  async () => {
+  async ({ page }) => {
     const analytics = await fetchJson<{ costPerHire: number }>("/api/ats/analytics");
-    const browser = await chromium.launch();
-    const page = await browser.newPage();
-    await page.goto(BASE);
-    await page.waitForLoadState("networkidle");
-    await page.getByRole("button", { name: "Analytics", exact: true }).click();
+    await goToSection(page, "Analytics");
     await page.waitForTimeout(1000);
     const card = page.locator("text=Cost per Hire").locator("..");
     const text = await card.innerText();
-    await browser.close();
     const expected = `$${analytics.costPerHire.toLocaleString()}`;
     const ok = text.includes(expected);
     return { ok, detail: ok ? undefined : `UI="${text}" expected="${expected}"` };
@@ -121,17 +110,10 @@ check(
 check(
   "Analytics Offer Acceptance matches API (not hardcoded 92%)",
   "Analytics",
-  async () => {
+  async ({ page }) => {
     const analytics = await fetchJson<{ offerAcceptanceRate: number }>("/api/ats/analytics");
-    const browser = await chromium.launch();
-    const page = await browser.newPage();
-    await page.goto(BASE);
-    await page.waitForLoadState("networkidle");
-    await page.getByRole("button", { name: "Analytics", exact: true }).click();
-    await page.waitForTimeout(1000);
     const card = page.locator("text=Offer Acceptance").locator("..");
     const text = await card.innerText();
-    await browser.close();
     const expected = `${analytics.offerAcceptanceRate}%`;
     const ok = text.includes(expected);
     return { ok, detail: ok ? undefined : `UI="${text}" expected="${expected}"` };
@@ -141,17 +123,10 @@ check(
 check(
   "Analytics Quality of Hire matches API (not hardcoded 4.3/5)",
   "Analytics",
-  async () => {
+  async ({ page }) => {
     const analytics = await fetchJson<{ qualityOfHire: number }>("/api/ats/analytics");
-    const browser = await chromium.launch();
-    const page = await browser.newPage();
-    await page.goto(BASE);
-    await page.waitForLoadState("networkidle");
-    await page.getByRole("button", { name: "Analytics", exact: true }).click();
-    await page.waitForTimeout(1000);
     const card = page.locator("text=Quality of Hire").locator("..");
     const text = await card.innerText();
-    await browser.close();
     const expected = `${analytics.qualityOfHire.toFixed(1)}/5`;
     const ok = text.includes(expected);
     return { ok, detail: ok ? undefined : `UI="${text}" expected="${expected}"` };
@@ -164,18 +139,13 @@ check(
 check(
   "Pipeline column counts match API byStageRecord",
   "Pipeline",
-  async () => {
+  async ({ page }) => {
     const analytics = await fetchJson<{ byStageRecord: Record<string, number> }>(
       "/api/ats/analytics",
     );
-    const browser = await chromium.launch();
-    const page = await browser.newPage();
-    await page.goto(BASE);
-    await page.waitForLoadState("networkidle");
-    await page.getByRole("button", { name: "Pipeline", exact: true }).click();
+    await goToSection(page, "Pipeline");
     await page.waitForTimeout(1500);
 
-    const expected: Record<string, number> = analytics.byStageRecord;
     const stageLabels: Record<string, string> = {
       applied: "Applied",
       screen: "Screening",
@@ -187,17 +157,15 @@ check(
     };
 
     const mismatches: string[] = [];
-    for (const [stage, count] of Object.entries(expected)) {
+    for (const [stage, count] of Object.entries(analytics.byStageRecord)) {
       const label = stageLabels[stage] ?? stage;
-      const expectedAriaLabel = `${label} column with ${count} applications`;
-      // Check the aria-label attribute on the droppable container
-      const el = page.locator(`[aria-label="${expectedAriaLabel}"]`);
+      const ariaLabel = `${label} column with ${count} applications`;
+      const el = page.locator(`[aria-label="${ariaLabel}"]`);
       const found = (await el.count()) > 0;
       if (!found) {
-        mismatches.push(`expected aria-label "${expectedAriaLabel}"`);
+        mismatches.push(`expected aria-label "${ariaLabel}"`);
       }
     }
-    await browser.close();
     return {
       ok: mismatches.length === 0,
       detail: mismatches.length ? mismatches.join("; ") : undefined,
@@ -212,7 +180,6 @@ check(
   "TOP_100_ATS array contains exactly 100 items",
   "ATS Compare",
   async () => {
-    // Read the constants file directly
     const fs = await import("fs");
     const path = await import("path");
     const content = fs.readFileSync(
@@ -226,7 +193,6 @@ check(
     const items = match[1].match(/"([^"]+)"/g) ?? [];
     const count = items.length;
 
-    // Check duplicates
     const names = items.map((s) => s.replace(/"/g, ""));
     const dupes = names.filter((n, i) => names.indexOf(n) !== i);
 
@@ -241,8 +207,7 @@ check(
 );
 
 /* ------------------------------------------------------------------ */
-/* No Math.random in component source (catches non-deterministic renders)  */
-/* Excludes: library files (src/components/ui/*), useMemo-wrapped (stable) */
+/* No Math.random in source code (catches non-deterministic renders)  */
 /* ------------------------------------------------------------------ */
 check(
   "No Math.random in app source (excludes library files, allows useMemo-wrapped)",
@@ -274,11 +239,8 @@ check(
         const trimmed = line.trim();
         if (trimmed.startsWith("//") || trimmed.startsWith("*")) return;
         if (line.includes("Math.random(")) {
-          // Check if it's inside a useMemo/useCallback/useState initializer (stable across renders)
-          // Look at the 5 lines above for useMemo( or useState(
           const context = lines.slice(Math.max(0, i - 5), i).join("\n");
-          const isStable =
-            /useMemo\(|useCallback\(|useState\(/.test(context);
+          const isStable = /useMemo\(|useCallback\(|useState\(/.test(context);
           if (!isStable) {
             offenders.push(`${file}:${i + 1}: ${trimmed}`);
           }
@@ -329,7 +291,7 @@ check(
 );
 
 /* ------------------------------------------------------------------ */
-/* Run all checks                                                      */
+/* Run all checks (single shared browser instance)                     */
 /* ------------------------------------------------------------------ */
 async function main() {
   console.log("\n🔍 TalentForge ATS — UI/API Reconciliation\n");
@@ -338,6 +300,13 @@ async function main() {
   let passed = 0;
   let failed = 0;
   const failures: Array<{ name: string; category: string; detail?: string }> = [];
+
+  // Launch ONE browser instance for all UI checks
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  // Navigate to home once
+  await page.goto(BASE);
+  await page.waitForLoadState("networkidle");
 
   // Group by category
   const categories = [...new Set(checks.map((c) => c.category))];
@@ -349,7 +318,7 @@ async function main() {
     for (const c of checks.filter((c) => c.category === category)) {
       process.stdout.write(`  ${c.name}... `);
       try {
-        const result = await c.run();
+        const result = await c.run({ browser, page });
         if (result.ok) {
           console.log("✅");
           passed++;
@@ -367,6 +336,8 @@ async function main() {
       }
     }
   }
+
+  await browser.close();
 
   console.log("\n" + "=".repeat(60));
   console.log(`\nResults: ${passed} passed, ${failed} failed, ${checks.length} total\n`);
