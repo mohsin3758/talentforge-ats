@@ -250,7 +250,7 @@ export async function generateBrief(input: {
   };
 }
 
-function safeParseJSON(text: string): Record<string, unknown> {
+export function safeParseJSON(text: string): Record<string, unknown> {
   if (!text) return {};
   // Strip code fences
   let t = text.trim();
