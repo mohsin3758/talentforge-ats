@@ -548,3 +548,98 @@ Complete 4 phases: CI workflow, README, visual regression tests, real auth + dep
 
 ### Stage Summary
 All 4 phases complete. The project now has CI/CD, comprehensive docs, visual regression testing, real authentication, and deployment configuration. The sandbox's dev server instability prevented browser-based auth verification, but the auth logic was verified working via direct script tests.
+
+---
+
+## Task ID: ATS-B-C-VERIFY-DEPLOY
+**Agent:** main (orchestrator)
+**Date:** 2026-06-29
+
+### Task
+Phase B: Verify auth works in browser. Phase C: Prepare for deployment.
+
+### Phase B: Auth Browser Verification ✅
+
+**Tested via Agent Browser:**
+
+1. **Login page renders** ✅
+   - Email field, Password field, Sign in button, Sign up button all visible
+   - Demo credentials displayed
+
+2. **Login with admin credentials** ✅
+   - Filled `admin@talentforge.com` / `Admin123!`
+   - Clicked "Sign in"
+   - Redirected to `http://localhost:3000/` (main app)
+   - Dashboard rendered with "Good morning, Recruiter" heading
+
+3. **User menu in Topbar** ✅
+   - "A Admin Recruiter" button visible in Topbar
+   - Clicking it opens dropdown with "Sign out" menuitem
+
+4. **Sign out works** ✅
+   - Clicked "Sign out"
+   - Redirected to `/login`
+
+5. **Register form renders** ✅
+   - Clicked "Sign up" — form switched to register mode
+   - Fields: Full name, Email, Password, Create account button
+
+6. **Register API verified** ✅ (via curl)
+   - POST `/api/auth/register` with valid data → 201, returns user object
+   - Duplicate email → 409
+   - Short password → 400
+   - bcrypt password hashing confirmed
+
+**Auth flow fully verified end-to-end.**
+
+### Phase C: Deployment Prep ✅
+
+**1. Fixed production build error:**
+- `useSearchParams()` in login page required Suspense boundary for static generation
+- Refactored `src/app/login/page.tsx`: extracted `LoginForm` component, wrapped in `<Suspense>`
+- Renamed `src/middleware.ts` → `src/proxy.ts` (Next.js 16 deprecated "middleware" in favor of "proxy")
+
+**2. Production build succeeds:**
+- `bun run build` completes without errors
+- All 22 routes compiled:
+  - `/login` — static (✓ Suspense fix worked)
+  - `/api/auth/[...nextauth]` — dynamic
+  - `/api/auth/register` — dynamic
+  - 13 CRUD routes — dynamic
+  - 7 AI routes — dynamic
+- Proxy (middleware) detected
+
+**3. Created `DEPLOYMENT.md`:**
+- Pre-deployment checklist
+- Vercel deployment guide (step-by-step)
+- Docker self-hosted guide
+- Environment variables reference
+- Database setup (SQLite vs PostgreSQL)
+- Post-deployment verification steps
+- Troubleshooting guide
+- Production security checklist
+
+### Final Verification
+- `bun run lint` — clean ✅
+- `bun run test:unit` — 148/148 pass ✅
+- `bun run build` — succeeds ✅
+- Auth login flow — verified in browser ✅
+- Auth sign out flow — verified in browser ✅
+- Auth register API — verified via curl ✅
+
+### What's Ready for Deployment
+1. **Code**: All auth + deployment code is in place
+2. **Build**: `bun run build` succeeds (production-ready)
+3. **Docs**: `DEPLOYMENT.md` has step-by-step Vercel guide
+4. **Config**: `vercel.json` ready, `.env.example` documents all vars
+5. **CI**: GitHub Actions runs all tests on every push
+
+### Next Steps for User
+1. Push to GitHub
+2. Import to Vercel (3 clicks)
+3. Add env vars (DATABASE_URL, NEXTAUTH_SECRET, NEXTAUTH_URL)
+4. Deploy
+5. Run `bun scripts/seed-admin.ts` against production DB
+6. Visit `/login`, sign in with admin@talentforge.com / Admin123!
+
+The project is now **fully production-ready** with verified auth, passing build, and complete deployment documentation.
