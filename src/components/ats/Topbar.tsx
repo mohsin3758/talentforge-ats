@@ -1,9 +1,11 @@
 "use client";
 
 import { useTheme } from "next-themes";
+import { useSession, signOut } from "next-auth/react";
 import { useUIStore } from "@/lib/ats/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Search,
   Sun,
@@ -12,6 +14,8 @@ import {
   Sparkles,
   Menu,
   Hammer,
+  LogOut,
+  User as UserIcon,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -25,6 +29,7 @@ import { toast } from "sonner";
 
 export function Topbar() {
   const { theme, setTheme } = useTheme();
+  const { data: session } = useSession();
   const setSection = useUIStore((s) => s.setSection);
   const setSelectedJobId = useUIStore((s) => s.setSelectedJobId);
 
@@ -133,6 +138,56 @@ export function Topbar() {
         >
           <Menu className="h-4 w-4" aria-hidden />
         </Button>
+
+        {/* User menu */}
+        {session?.user ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-2">
+                <Avatar className="h-7 w-7">
+                  <AvatarFallback className="bg-emerald-500/10 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                    {session.user.name?.[0]?.toUpperCase() ?? session.user.email?.[0]?.toUpperCase() ?? "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="hidden text-sm font-medium sm:inline">
+                  {session.user.name ?? session.user.email}
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">{session.user.name ?? "User"}</span>
+                  <span className="text-xs text-muted-foreground">{session.user.email}</span>
+                  {("role" in session.user) && (
+                    <span className="mt-1 text-xs capitalize text-emerald-600 dark:text-emerald-400">
+                      {(session.user as { role?: string }).role}
+                    </span>
+                  )}
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  signOut({ callbackUrl: "/login" });
+                  toast.info("Signed out");
+                }}
+              >
+                <LogOut className="mr-2 h-4 w-4" aria-hidden />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => (window.location.href = "/login")}
+          >
+            <UserIcon className="mr-1.5 h-4 w-4" aria-hidden />
+            Sign in
+          </Button>
+        )}
       </div>
     </header>
   );

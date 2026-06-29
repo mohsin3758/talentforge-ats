@@ -12,6 +12,9 @@ import { defineConfig, devices } from "@playwright/test";
  * Run a single file:
  *   bunx playwright tests/e2e/dashboard.spec.ts
  *
+ * Generate/update visual regression baselines:
+ *   bunx playwright test tests/e2e/visual-regression.spec.ts --update-snapshots
+ *
  * Run reconciliation script separately:
  *   bun scripts/reconcile.ts
  */
@@ -23,14 +26,21 @@ export default defineConfig({
   workers: 1, // single worker — shared DB
   reporter: process.env.CI ? "github" : [["list"], ["html", { open: "never" }]],
   timeout: 60_000,
-  expect: { timeout: 10_000 },
+  // Snapshot storage for visual regression tests
+  snapshotPathTemplate: "{snapshotDir}/{testFileDir}/{testName}-{projectName}-{arg}{ext}",
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
-    // Collect console errors during every test
     viewport: { width: 1440, height: 900 },
+    expect: {
+      timeout: 10_000,
+      toHaveScreenshot: {
+        maxDiffPixelRatio: 0.01,
+        animations: "disabled",
+      },
+    },
   },
   projects: [
     {
